@@ -1,0 +1,12 @@
+[project]
+name = "ip-pricing-app"
+version = "0.1.0"
+description = "IP Pricing Agent — ABC Health | 9th IAI Capacity Building Seminar"
+requires-python = ">=3.10"
+dependencies = [
+    "streamlit>=1.38",
+    "agno",
+    "google-genai",
+    "pandas",
+    "numpy",
+]
