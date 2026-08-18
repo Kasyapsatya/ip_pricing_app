@@ -30,7 +30,7 @@ ip_pricing_app/
 ## Setup
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 The pricing data is **already generated and included** (`data/pricing_artifacts.pkl`).

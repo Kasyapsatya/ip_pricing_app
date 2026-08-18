@@ -420,11 +420,13 @@ def calculate_premium(age, monthly_income, prior_episodes, occupation='desk', de
     p_cross = float(deferred_row['p_cross_to_claiming'])
     avg_claiming_weeks = float(deferred_row['avg_claiming_weeks'])
     avg_claim_cost = float(deferred_row['avg_claim_cost'])
-    base_annual_cost = incidence_for_cell * p_cross * avg_claim_cost
+    # pooled_base_premium is INCOME-NEUTRAL — incidence x crossing probability x the pooled
+    # (portfolio-average-income) claim cost. Income and the experience loading are then applied
+    # as two separate, clean multiplicative factors on top — see final_annual_premium below.
+    pooled_base_premium = incidence_for_cell * p_cross * avg_claim_cost
 
     income_scale = monthly_income / population['monthly_income'].mean()
-    base_premium = base_annual_cost * income_scale
-    final_premium = base_premium * loading_factor
+    final_premium = pooled_base_premium * income_scale * loading_factor
 
     return {
         'age': age,
@@ -438,8 +440,8 @@ def calculate_premium(age, monthly_income, prior_episodes, occupation='desk', de
         'p_cross_to_claiming': round(p_cross, 3),
         'avg_claiming_weeks': round(avg_claiming_weeks, 1),
         'avg_claim_cost_for_your_income': round(avg_claim_cost * income_scale, 0),
+        'pooled_base_premium': round(float(pooled_base_premium), 0),
         'income_scale': round(float(income_scale), 3),
-        'base_premium': round(float(base_premium), 0),
         'loading_factor': loading_factor,
         'final_annual_premium': round(float(final_premium), 0),
     }

@@ -311,10 +311,12 @@ with st.sidebar:
 
     if submitted:
         prior_episodes = 2 if prior_episodes_label == "2+" else int(prior_episodes_label)
-        st.session_state.last_quote = tools.calculate_premium(
-            age=age, monthly_income=income, prior_episodes=prior_episodes,
-            occupation=occupation, deferred_weeks=deferred_weeks,
-        )
+        quote_params = {
+            "age": age, "monthly_income": income, "occupation": occupation,
+            "deferred_weeks": deferred_weeks, "prior_episodes": prior_episodes,
+        }
+        st.session_state.last_quote_params = quote_params
+        st.session_state.last_quote = tools.calculate_premium(**quote_params)
 
 
 # ---------------------------------------------------------------------------
@@ -322,14 +324,14 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 st.markdown("## Income Protection — Quote & Explainer")
 
-# --- Quote summary cards ---
+# --- Quote summary cards: final = base x 2 factors, read left to right ---
 quote = st.session_state.get("last_quote")
 if quote:
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Final Annual Premium", f"₹{quote['final_annual_premium']:,.0f}")
-    c2.metric("Base Premium", f"₹{quote['base_premium']:,.0f}")
-    c3.metric("Experience Loading", f"{quote['loading_factor']:.3f}x")
-    c4.metric("Income Scale", f"{quote['income_scale']:.3f}x")
+    c1.metric("Base Premium (pooled)", f"₹{quote['pooled_base_premium']:,.0f}")
+    c2.metric("× Income Scale", f"{quote['income_scale']:.3f}x")
+    c3.metric("× Experience Loading", f"{quote['loading_factor']:.3f}x")
+    c4.metric("= Final Annual Premium", f"₹{quote['final_annual_premium']:,.0f}")
     with st.expander("Full breakdown"):
         st.json(quote)
 else:
@@ -349,6 +351,9 @@ for msg in messages:
     bubble_html = f'<div class="chat-bubble {role_class}">{msg["content"]}</div>'
     if role_class == "user":
         st.markdown(f'<div class="chat-row user">{bubble_html}{avatar_html}</div>', unsafe_allow_html=True)
+        if msg.get("tool_trace"):  # reused column: holds the quote params auto-passed with this message
+            with st.expander("📋 Parameters passed automatically"):
+                st.json(msg["tool_trace"])
     else:
         st.markdown(f'<div class="chat-row agent">{avatar_html}{bubble_html}</div>', unsafe_allow_html=True)
         if msg.get("tool_trace"):
@@ -364,13 +369,29 @@ if user_input:
         st.error("Please provide a Gemini API key in the sidebar before chatting.")
     else:
         is_first_message = len(messages) == 0
-        chat_store.add_message(st.session_state.active_chat_id, "user", user_input)
+        quote_params = st.session_state.get("last_quote_params")
+
+        # Store + display exactly what gets auto-passed — visible as its own trace, not hidden.
+        chat_store.add_message(
+            st.session_state.active_chat_id, "user", user_input, tool_trace=quote_params,
+        )
         if is_first_message:
             chat_store.rename_chat_from_first_message(st.session_state.active_chat_id, user_input)
 
+        # Ground the agent in the active quote's parameters so the user doesn't have to
+        # retype age/income/occupation/deferred period/prior episodes every time.
+        if quote_params:
+            param_line = ", ".join(f"{k}={v}" for k, v in quote_params.items())
+            agent_input = (
+                f"[Active quote parameters — use these for calculate_premium unless the "
+                f"question clearly specifies different ones: {param_line}]\n\n{user_input}"
+            )
+        else:
+            agent_input = user_input
+
         with st.spinner("Priya is thinking..."):
             agent = build_agent(api_key)
-            response = agent.run(user_input)
+            response = agent.run(agent_input)
             trace = extract_tool_trace(response)
 
         chat_store.add_message(
