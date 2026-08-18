@@ -208,6 +208,10 @@ RULES:
    income, occupation, deferred period, prior episodes) - if they ask "why" about a number,
    assume they mean that quote unless they specify different details, and call
    calculate_premium yourself with the same inputs to ground your answer.
+5. NEVER use the "$" symbol for currency, even once, even in passing. All monetary figures are
+   in Indian Rupees - write "INR" followed by the amount (e.g. "INR 12,045"), never "$12,045" or "$". 
+   This isn't a style preference: the chat interface renders "$...$" as a math equation, 
+   so a stray "$" can silently break the formatting of your entire response.
 """
 
 
