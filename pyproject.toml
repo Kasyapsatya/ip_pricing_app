@@ -9,4 +9,5 @@ dependencies = [
     "google-genai",
     "pandas",
     "numpy",
+    "matplotlib",
 ]

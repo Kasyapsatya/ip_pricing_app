@@ -21,6 +21,7 @@ from pathlib import Path
 import streamlit as st
 
 import chat_store
+import charts
 import pricing_tools as pt
 
 APP_DIR = Path(__file__).parent
@@ -209,9 +210,10 @@ RULES:
    assume they mean that quote unless they specify different details, and call
    calculate_premium yourself with the same inputs to ground your answer.
 5. NEVER use the "$" symbol for currency, even once, even in passing. All monetary figures are
-   in Indian Rupees - write "INR" followed by the amount (e.g. "INR 12,045"), never "$12,045" or "$". 
-   This isn't a style preference: the chat interface renders "$...$" as a math equation, 
-   so a stray "$" can silently break the formatting of your entire response.
+   in Indian Rupees - write "INR" or "Rs" followed by the amount (e.g. "INR 12,045" or
+   "Rs 12,045"), never "$12,045" or "$". This isn't a style preference: the chat interface
+   renders "$...$" as a math equation, so a stray "$" can silently break the formatting of your
+   entire response.
 """
 
 
@@ -336,6 +338,26 @@ if quote:
     c2.metric("× Income Scale", f"{quote['income_scale']:.3f}x")
     c3.metric("× Experience Loading", f"{quote['loading_factor']:.3f}x")
     c4.metric("= Final Annual Premium", f"₹{quote['final_annual_premium']:,.0f}")
+
+    st.markdown("#### How this quote was built")
+    g1, g2, g3 = st.columns(3)
+    with g1:
+        st.pyplot(charts.render_premium_waterfall(quote), use_container_width=True)
+    with g2:
+        st.pyplot(
+            charts.render_incidence_heatmap(
+                tools.base_table, tools.AGE_BAND_LABELS, tools.OCCUPATION_CLASSES,
+                highlight_age_band=tools.age_band(quote["age"]),
+                highlight_occupation=quote["occupation"],
+            ),
+            use_container_width=True,
+        )
+    with g3:
+        st.pyplot(
+            charts.render_deferred_tradeoff(tools.deferred_period_table, highlight_weeks=quote["deferred_weeks"]),
+            use_container_width=True,
+        )
+
     with st.expander("Full breakdown"):
         st.json(quote)
 else:
